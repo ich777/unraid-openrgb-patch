@@ -92,12 +92,13 @@ fi
 
 install() {
 #Install OpenRGB-Patch
+/sbin/modprobe -rf i2c-piix4 2&gt;/dev/null
+/sbin/modprobe -rf i2c-nct6775 2&gt;/dev/null
 /sbin/installpkg "&plugin;/packages/${KERNEL_V%%-*}/${PACKAGE}-1.txz"
 depmod -a 2&gt;/dev/null
-/sbin/modprobe -rf i2c_piix4 2&gt;/dev/null
-/sbin/modprobe -rf nct6775 2&gt;/dev/null
 /sbin/modprobe i2c-dev 2&gt;/dev/null
-udevadm control --reload 2&gt;/dev/null &amp;&amp; udevadm trigger --action=add 2&gt;/dev/null
+/sbin/modprobe i2c-piix4 2&gt;/dev/null
+/sbin/modprobe i2c-nct6775 2&gt;/dev/null
 }
 
 #Check if OpenRGB-Patch are already downloaded
