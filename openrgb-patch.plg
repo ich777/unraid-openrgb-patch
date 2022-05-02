@@ -1,0 +1,131 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN [
+  <!ENTITY name      "openrgb-patch">
+  <!ENTITY author    "ich777">
+  <!ENTITY version   "2022.05.02">
+  <!ENTITY gitURL    "https://github.com/&author;/unraid-&name;/raw/master">
+  <!ENTITY pluginURL "&gitURL;/&name;.plg">
+  <!ENTITY plugin    "/boot/config/plugins/&name;">
+  <!ENTITY emhttp    "/usr/local/emhttp/plugins/&name;">
+]>
+
+<PLUGIN  name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="6.9.2">
+
+<CHANGES>
+
+###2022.05.02
+- Initial release
+
+</CHANGES>
+
+<FILE Run="/bin/bash">
+<INLINE>
+rm -f $(ls /boot/config/plugins/&name;/&name;*.txz 2>/dev/null|grep -v '&version;')
+</INLINE>
+</FILE>
+
+<FILE Name="&emhttp;/README.md">
+<INLINE>
+**OpenRGB Patch**
+
+This package contains and installs the OpenRGB Patch that needs to be installed in conjunction with the OpenRGB Docker container to take full controll over your RGB lightning.
+To see all the RGB devices you have to pass through the devices /sys/bus/i2c/device and /dev/i2c-0 to the OpenRGB Docker container and maybe all other /dev/i2c-X devices (where you have to replace X with the number from the device to pass through).
+  
+Source: https://gitlab.com/CalcProgrammer1/OpenRGB/-/blob/master/OpenRGB.patch
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash">
+<INLINE>
+
+KERNEL_V="$(uname -r)"
+PACKAGE="openrgb_patch-plugin-$KERNEL_V"
+DL_URL="https://github.com/ich777/unraid-openrgb-patch/releases/download/$KERNEL_V"
+
+#Wait for Network and timeout after 30 seconds
+HOST="8.8.8.8"
+for i in {1..10}; do
+  ping -c1 $HOST &amp;> /dev/null &amp;&amp; break;
+done
+
+if [ ! -d "&plugin;/packages/${KERNEL_V%%-*}" ]; then
+  mkdir -p "&plugin;/packages/${KERNEL_V%%-*}"
+fi
+
+#Check for old packages
+rm -rf $(ls -d &plugin;/packages/* | grep -v "${KERNEL_V%%-*}")
+
+download() {
+#Download OpenRGB-Patch
+if wget -q -nc --show-progress --progress=bar:force:noscroll -O "&plugin;/packages/${KERNEL_V%%-*}/${PACKAGE}-1.txz" "${DL_URL}/${PACKAGE}-1.txz" ; then
+  if [ "$(md5sum "&plugin;/packages/${KERNEL_V%%-*}/${PACKAGE}-1.txz" | cut -d ' ' -f1)" != "$(wget -qO- "${DL_URL}/${PACKAGE}-1.txz.md5" | cut -d ' ' -f1)" ]; then
+    echo
+    echo "---CHECKSUM ERROR!---"
+    exit 1
+  fi
+  echo
+  echo "-------------------Sucessfully downloaded OpenRGB-Patch-------------------"
+else
+  echo
+  echo "-----------------------Can't download OpenRGB-Patch-----------------------"
+  exit 1
+fi
+}
+
+check() {
+if [ ! -f "&plugin;/packages/${KERNEL_V%%-*}/${PACKAGE}-1.txz" ]; then
+  echo
+  echo "-----------------------Downloading OpenRGB-Patch!-------------------------"
+  echo "-------This could take some time, please don't close this window!---------"
+  download
+elif [ ! -s "&plugin;/packages/${KERNEL_V%%-*}/${PACKAGE}-1.txz" ]; then
+  rm -rf &plugin;/packages/${KERNEL_V%%-*}/${PACKAGE}-1.txz
+  echo
+  echo "---Download is empty please contact the developer of this plugin if the---"
+  echo "--------plugin has been already built against that Kernel version---------"
+  exit 1
+else
+  echo
+  echo "-----------------------OpenRGB-Patch found locally------------------------"
+fi
+}
+
+install() {
+#Install OpenRGB-Patch
+/sbin/installpkg "&plugin;/packages/${KERNEL_V%%-*}/${PACKAGE}-1.txz"
+depmod -a 2&gt;/dev/null
+/sbin/modprobe -rf i2c_piix4 2&gt;/dev/null
+/sbin/modprobe -rf nct6775 2&gt;/dev/null
+/sbin/modprobe i2c-dev
+udevadm control --reload 2&gt;/dev/null &amp;&amp; udevadm trigger --action=add 2&gt;/dev/null
+}
+
+#Check if OpenRGB-Patch are already downloaded
+check
+install > /dev/null
+
+echo
+echo "--------------Installation of OpenRGB-Patch successful-----------------"
+echo
+
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+
+echo "--------------------------------"
+echo "---Uninstalling OpenRGB-Patch---"
+echo "--------------------------------"
+# Remove plugin related files
+rm -rf /usr/local/emhttp/plugins/&name;
+rm -rf &plugin;
+echo
+echo "-----------------------------------------------------------"
+echo "---OpenRGB-Patch uninstalled, please reboot your server!---"
+echo "-----------------------------------------------------------"
+echo
+
+</INLINE>
+</FILE>
+</PLUGIN>
