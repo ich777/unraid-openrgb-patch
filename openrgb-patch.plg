@@ -96,7 +96,7 @@ install() {
 depmod -a 2&gt;/dev/null
 /sbin/modprobe -rf i2c_piix4 2&gt;/dev/null
 /sbin/modprobe -rf nct6775 2&gt;/dev/null
-/sbin/modprobe i2c-dev
+/sbin/modprobe i2c-dev 2&gt;/dev/null
 udevadm control --reload 2&gt;/dev/null &amp;&amp; udevadm trigger --action=add 2&gt;/dev/null
 }
 
